@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>올리브영 브세 순위 리포트</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --card:#ffffff; --border:#e3e5e9; --text:#1c1e21; --muted:#6b7280;
+    --accent:#0ea060; --up:#16a34a; --down:#dc2626; --same:#9ca3af; --new:#2563eb; --out:#d1d5db;
+    --head:#111827; --hover:#f0f9f4;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif;background:var(--bg);color:var(--text);}
+  header{background:var(--head);color:#fff;padding:20px 28px;}
+  header h1{margin:0 0 4px;font-size:20px;}
+  header p{margin:0;color:#9ca3af;font-size:13px;}
+  .tabs{display:flex;gap:4px;background:#fff;border-bottom:1px solid var(--border);padding:0 24px;overflow-x:auto;position:sticky;top:0;z-index:10;}
+  .tab{padding:14px 18px;cursor:pointer;font-size:14px;color:var(--muted);white-space:nowrap;border-bottom:3px solid transparent;user-select:none;}
+  .tab:hover{color:var(--text);}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;}
+  .tab-compare{margin-left:auto;color:#7c3aed;}
+  .tab-compare.active{color:#7c3aed;border-bottom-color:#7c3aed;}
+  main{padding:20px 24px 60px;max-width:1400px;margin:0 auto;}
+  .view{display:none;}
+  .view.active{display:block;}
+  .toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:14px;}
+  .toolbar input[type=text]{padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;min-width:200px;}
+  .toolbar select{padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;}
+  .toolbar .meta{font-size:12px;color:var(--muted);margin-left:auto;}
+  .btn{padding:8px 14px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;cursor:pointer;font-weight:600;color:var(--text);}
+  .btn:hover{background:var(--hover);border-color:var(--accent);}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+  table{border-collapse:collapse;width:100%;font-size:13px;}
+  thead th{background:#fafbfc;color:var(--muted);font-weight:600;text-align:center;padding:10px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;white-space:nowrap;}
+  .table-wrap{overflow:auto;max-height:calc(100vh - 260px);}
+  thead th.sortable{cursor:pointer;}
+  thead th.sortable:hover{color:var(--text);}
+  tbody td{padding:8px;text-align:center;border-bottom:1px solid #f0f1f3;white-space:nowrap;}
+  tbody tr:hover{background:var(--hover);}
+  td.brand{text-align:left;font-weight:600;padding-left:14px;}
+  td.rank-cell{font-variant-numeric:tabular-nums;}
+  .chip{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:700;}
+  .chip.up{color:var(--up);}
+  .chip.down{color:var(--down);}
+  .chip.same{color:var(--same);}
+  .chip.new{color:#fff;background:var(--new);}
+  .chip.out{color:#fff;background:#9ca3af;}
+  .dash{color:var(--out);}
+  .num-latest{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:22px;border-radius:6px;background:#eef2ff;color:#3730a3;font-weight:700;}
+  .summary{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
+  .summary .card{flex:1;min-width:150px;padding:14px 16px;}
+  .summary .card .num{font-size:22px;font-weight:800;}
+  .summary .card .lbl{font-size:12px;color:var(--muted);margin-top:2px;}
+  .summary .card.clickable{cursor:pointer;transition:box-shadow .15s,border-color .15s;}
+  .summary .card.clickable:hover{border-color:#c7cbd1;}
+  .summary .card.clickable.active{border-color:currentColor;box-shadow:0 0 0 1px currentColor;}
+  .filter-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;background:#eef2ff;color:#3730a3;font-size:12px;font-weight:600;margin-bottom:10px;cursor:pointer;}
+  .filter-chip:hover{background:#e0e7ff;}
+  .lists{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;}
+  .list-card{padding:14px 16px;}
+  .list-card h3{margin:0 0 8px;font-size:13px;color:var(--muted);}
+  .list-row{display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px dashed #f0f1f3;}
+  .list-row:last-child{border-bottom:none;}
+  .footnote{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.6;}
+</style>
+</head>
+<body>
+<header>
+  <h1>올리브영 올영세일(브세) TOP100 브랜드 순위 리포트_서리풀</h1>
+</header>
+<div class="tabs" id="tabs"></div>
+<main id="main"></main>
+
+<script>
+const PERIODS = /*__PERIODS_JSON__*/;
+
+const fmtDate = (d) => {
+  if(!d) return '';
+  const m = d.match(/^\d{4}-(\d{2})-(\d{2})/);
+  return m ? `${m[1]}/${m[2]}` : d;
+};
+
+function periodLatestDate(p){
+  return p.last_data_idx >= 0 ? p.dates[p.last_data_idx] : null;
+}
+
+function renderTabs(activeIdx, activeIsCompare){
+  const tabs = document.getElementById('tabs');
+  tabs.innerHTML = '';
+  PERIODS.forEach((p, i) => {
+    const t = document.createElement('div');
+    t.className = 'tab' + (!activeIsCompare && i===activeIdx ? ' active' : '');
+    t.textContent = p.title.replace(/올리브영 올영세일 브랜드 순위/, '').trim() || p.title;
+    t.onclick = () => showPeriod(i);
+    tabs.appendChild(t);
+  });
+  const cmp = document.createElement('div');
+  cmp.className = 'tab tab-compare' + (activeIsCompare ? ' active' : '');
+  cmp.textContent = '📊 기간 비교';
+  cmp.onclick = () => showCompare();
+  tabs.appendChild(cmp);
+}
+
+function computeChange(prevRank, curRank){
+  if(curRank == null) return {main:null, badge:null, colorKey:'dash'};
+  if(prevRank == null) return {main:String(curRank), badge:'NEW', colorKey:'new'};
+  const delta = prevRank - curRank; // 양수 = 순위 상승(숫자 감소)
+  if(delta > 0) return {main:String(curRank), badge:`▲${delta}`, colorKey:'up'};
+  if(delta < 0) return {main:String(curRank), badge:`▼${-delta}`, colorKey:'down'};
+  return {main:String(curRank), badge:'–', colorKey:'same'};
+}
+
+function rankChangeCell(prevRank, curRank){
+  const c = computeChange(prevRank, curRank);
+  if(c.colorKey === 'dash') return '<span class="dash">-</span>';
+  return `<span class="rank-cell">${c.main}</span> <span class="chip ${c.colorKey}">${c.badge}</span>`;
+}
+
+function roundRect(ctx, x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.arcTo(x+w, y, x+w, y+h, r);
+  ctx.arcTo(x+w, y+h, x, y+h, r);
+  ctx.arcTo(x, y+h, x, y, r);
+  ctx.arcTo(x, y, x+w, y, r);
+  ctx.closePath();
+}
+
+const CHANGE_COLORS = {up:'#16a34a', down:'#dc2626', same:'#9ca3af', new:'#2563eb', dash:'#d1d5db'};
+
+function drawPeriodCanvas(p){
+  const rows = p.rows.filter(r => r.latest_rank != null && r.latest_rank <= 100)
+                      .sort((a,b) => a.latest_rank - b.latest_rank);
+  const dates = p.dates;
+  const nDates = dates.length;
+  const scale = 2;
+  const rankColW = 64, brandColW = 180, dateColW = 100, pad = 24, rowH = 30, headerH = 36, titleH = 28, subH = 20, gapTop = 14;
+  const width = pad*2 + rankColW + brandColW + dateColW*nDates;
+  const height = pad*2 + titleH + subH + gapTop + headerH + rowH*Math.max(rows.length, 1);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.ceil(width*scale);
+  canvas.height = Math.ceil(height*scale);
+  const ctx = canvas.getContext('2d');
+  ctx.scale(scale, scale);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = '#111827';
+  ctx.font = 'bold 18px "Malgun Gothic",sans-serif';
+  ctx.fillText(p.title, pad, pad);
+
+  const latestDate = periodLatestDate(p);
+  ctx.fillStyle = '#6b7280';
+  ctx.font = '12px "Malgun Gothic",sans-serif';
+  ctx.fillText(`최신 데이터 기준일: ${latestDate || '데이터 없음'} · TOP100`, pad, pad+titleH);
+
+  let y = pad + titleH + subH + gapTop;
+  ctx.fillStyle = '#fafbfc';
+  ctx.fillRect(pad, y, width-2*pad, headerH);
+  ctx.fillStyle = '#6b7280';
+  ctx.font = 'bold 13px "Malgun Gothic",sans-serif';
+  ctx.textBaseline = 'middle';
+  let x = pad;
+  ctx.textAlign = 'center';
+  ctx.fillText('최신순위', x+rankColW/2, y+headerH/2);
+  x += rankColW;
+  ctx.textAlign = 'left';
+  ctx.fillText('브랜드', x+10, y+headerH/2);
+  x += brandColW;
+  ctx.textAlign = 'center';
+  dates.forEach((d,i) => {
+    ctx.fillText(`${fmtDate(d)}(${p.weekdays[i]||''})`, x+dateColW/2, y+headerH/2);
+    x += dateColW;
+  });
+  y += headerH;
+  ctx.strokeStyle = '#e3e5e9';
+  ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(width-pad, y); ctx.stroke();
+
+  if(rows.length === 0){
+    ctx.fillStyle = '#9ca3af';
+    ctx.font = '13px "Malgun Gothic",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('표시할 데이터가 없습니다.', width/2, y+rowH/2);
+  }
+
+  rows.forEach(r => {
+    let cx = pad;
+    ctx.fillStyle = '#eef2ff';
+    const badgeW = 30, badgeH = 20;
+    roundRect(ctx, cx+(rankColW-badgeW)/2, y+(rowH-badgeH)/2, badgeW, badgeH, 6);
+    ctx.fill();
+    ctx.fillStyle = '#3730a3';
+    ctx.font = 'bold 12px "Malgun Gothic",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(String(r.latest_rank), cx+rankColW/2, y+rowH/2);
+    cx += rankColW;
+
+    ctx.fillStyle = '#1c1e21';
+    ctx.font = 'bold 13px "Malgun Gothic",sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(r.brand, cx+10, y+rowH/2);
+    cx += brandColW;
+
+    r.ranks.forEach((rank, i) => {
+      if(i === 0){
+        ctx.fillStyle = '#1c1e21';
+        ctx.font = '12px "Malgun Gothic",sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(rank != null ? String(rank) : '-', cx+dateColW/2, y+rowH/2);
+      } else {
+        const c = computeChange(r.ranks[i-1], rank);
+        if(c.colorKey === 'dash'){
+          ctx.fillStyle = CHANGE_COLORS.dash;
+          ctx.font = '12px "Malgun Gothic",sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('-', cx+dateColW/2, y+rowH/2);
+        } else {
+          ctx.fillStyle = '#1c1e21';
+          ctx.font = '12px "Malgun Gothic",sans-serif';
+          ctx.textAlign = 'right';
+          ctx.fillText(c.main, cx+dateColW/2-6, y+rowH/2);
+          ctx.fillStyle = CHANGE_COLORS[c.colorKey];
+          ctx.font = 'bold 11px "Malgun Gothic",sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText(c.badge, cx+dateColW/2+6, y+rowH/2);
+        }
+      }
+      cx += dateColW;
+    });
+
+    y += rowH;
+    ctx.strokeStyle = '#f0f1f3';
+    ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(width-pad, y); ctx.stroke();
+  });
+
+  return canvas;
+}
+
+function downloadCanvasAsPng(canvas, filename){
+  canvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }, 'image/png');
+}
+
+let curSearch = '';
+let curTopN = 30;
+
+function showPeriod(idx){
+  curSearch = ''; curTopN = 30;
+  renderTabs(idx, false);
+  const p = PERIODS[idx];
+  const main = document.getElementById('main');
+  const latestDate = periodLatestDate(p);
+
+  main.innerHTML = `
+    <div class="toolbar">
+      <input type="text" id="searchBox" placeholder="브랜드명 검색..." />
+      <select id="topNSel">
+        <option value="10">TOP 10</option>
+        <option value="30" selected>TOP 30</option>
+        <option value="50">TOP 50</option>
+        <option value="100">TOP 100</option>
+        <option value="9999">전체(이탈 포함)</option>
+      </select>
+      <button type="button" class="btn" id="downloadImgBtn">🖼️ 이미지로 다운로드 (TOP100)</button>
+      <span class="meta">최신 데이터 기준일: ${latestDate ? latestDate : '데이터 없음'} · 총 ${p.rows.length}개 브랜드 등장</span>
+    </div>
+    <div class="card table-wrap">
+      <table>
+        <thead><tr id="theadRow"></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <p class="footnote">셀 숫자는 해당 일자의 순위이며, 옆 배지는 전날 대비 변동(▲상승 ▼하락 – 동일 NEW 신규진입)입니다. 아직 도래하지 않은 날짜는 "-"로 표시됩니다.</p>
+  `;
+
+  const thead = document.getElementById('theadRow');
+  thead.innerHTML = '<th>최신순위</th><th style="text-align:left;padding-left:14px;">브랜드</th>' +
+    p.dates.map((d,i) => `<th>${fmtDate(d)}(${p.weekdays[i]||''})</th>`).join('');
+
+  const tbody = document.getElementById('tbody');
+  function draw(){
+    const q = curSearch.trim().toLowerCase();
+    const rows = p.rows.filter(r => {
+      if(q && !r.brand.toLowerCase().includes(q)) return false;
+      if(curTopN >= 9999) return true;
+      return r.latest_rank != null && r.latest_rank <= curTopN;
+    });
+    tbody.innerHTML = rows.map(r => {
+      const cells = r.ranks.map((rank, i) => {
+        if(i === 0) return `<td class="rank-cell">${rank != null ? rank : '<span class="dash">-</span>'}</td>`;
+        return `<td>${rankChangeCell(r.ranks[i-1], rank)}</td>`;
+      }).join('');
+      const latest = r.latest_rank != null ? `<span class="num-latest">${r.latest_rank}</span>` : '<span class="dash">-</span>';
+      return `<tr><td>${latest}</td><td class="brand">${r.brand}</td>${cells}</tr>`;
+    }).join('') || '<tr><td colspan="99" style="padding:24px;color:#9ca3af;">조건에 맞는 브랜드가 없습니다.</td></tr>';
+  }
+  document.getElementById('searchBox').oninput = (e) => { curSearch = e.target.value; draw(); };
+  document.getElementById('topNSel').onchange = (e) => { curTopN = parseInt(e.target.value,10); draw(); };
+  document.getElementById('downloadImgBtn').onclick = () => {
+    const canvas = drawPeriodCanvas(p);
+    const safeName = p.title.replace(/[^0-9a-zA-Z가-힣]/g, '');
+    downloadCanvasAsPng(canvas, `올리브영_브세순위_${safeName}_TOP100.png`);
+  };
+  draw();
+}
+
+let cmpSortKey = 'b';
+let cmpSortDir = 1;
+
+function showCompare(){
+  renderTabs(-1, true);
+  const main = document.getElementById('main');
+  const defaultA = PERIODS.findIndex(p => /3월/.test(p.title));
+  // 9월은 25/26년 등 여러 해에 있을 수 있으므로 A와 가장 가까운(마지막) 9월을 고른다.
+  const nineIdxs = PERIODS.map((_, i) => i).filter(i => /9월/.test(PERIODS[i].title) && i !== defaultA);
+  const defaultB = nineIdxs.length ? nineIdxs[nineIdxs.length - 1] : -1;
+  const idxA = defaultA >= 0 ? defaultA : 0;
+  const idxB = (defaultB >= 0 && defaultB !== idxA) ? defaultB : PERIODS.length - 1;
+
+  main.innerHTML = `
+    <div class="toolbar">
+      <label style="font-size:13px;color:var(--muted);">비교 A</label>
+      <select id="selA"></select>
+      <label style="font-size:13px;color:var(--muted);">비교 B</label>
+      <select id="selB"></select>
+    </div>
+    <div class="summary" id="summary"></div>
+    <div class="lists" id="lists"></div>
+    <div id="filterChipWrap"></div>
+    <div class="card table-wrap">
+      <table>
+        <thead><tr>
+          <th>브랜드</th>
+          <th class="sortable" data-k="a">A 평균순위 ⇅</th>
+          <th class="sortable" data-k="b">B 평균순위 ⇅</th>
+          <th class="sortable" data-k="delta">변동 ⇅</th>
+          <th>상태</th>
+        </tr></thead>
+        <tbody id="cmpBody"></tbody>
+      </table>
+    </div>
+    <p class="footnote">각 기간 동안 브랜드가 TOP100에 등장한 날짜들의 순위를 평균 내어 비교합니다(예: 일부 날짜만 등장했다면 등장한 날짜만으로 평균). 진행 중인 세일은 현재까지 채워진 날짜만 반영됩니다.</p>
+  `;
+
+  const selA = document.getElementById('selA');
+  const selB = document.getElementById('selB');
+  PERIODS.forEach((p, i) => {
+    const label = `${p.title} (기간 평균, 최신 ${periodLatestDate(p) || '데이터없음'}까지)`;
+    selA.innerHTML += `<option value="${i}" ${i===idxA?'selected':''}>${label}</option>`;
+    selB.innerHTML += `<option value="${i}" ${i===idxB?'selected':''}>${label}</option>`;
+  });
+
+  let cmpStatusFilter = null; // null | 'new' | 'out'
+
+  function avgRankMap(p){
+    const m = {};
+    p.rows.forEach(r => {
+      const present = r.ranks.filter(v => v != null);
+      if(present.length === 0) return;
+      const avg = present.reduce((s,v) => s+v, 0) / present.length;
+      m[r.brand] = avg;
+    });
+    return m;
+  }
+
+  const fmtAvg = (v) => v.toFixed(1);
+
+  function draw(){
+    const pa = PERIODS[parseInt(selA.value,10)];
+    const pb = PERIODS[parseInt(selB.value,10)];
+    const ma = avgRankMap(pa), mb = avgRankMap(pb);
+    const brands = Array.from(new Set([...Object.keys(ma), ...Object.keys(mb)]));
+
+    let rows = brands.map(brand => {
+      const a = ma[brand] ?? null;
+      const b = mb[brand] ?? null;
+      let status = 'both', delta = null;
+      if(a != null && b != null){ delta = a - b; if(Math.abs(delta) < 0.05) delta = 0; status = 'both'; }
+      else if(a != null && b == null){ status = 'out'; }
+      else if(a == null && b != null){ status = 'new'; }
+      return {brand, a, b, delta, status};
+    });
+
+    rows.sort((x,y) => {
+      const val = (r) => {
+        if(cmpSortKey === 'a') return r.a ?? 9999;
+        if(cmpSortKey === 'b') return r.b ?? 9999;
+        if(cmpSortKey === 'delta') return r.delta ?? -9999;
+        return 0;
+      };
+      return (val(x) - val(y)) * cmpSortDir;
+    });
+
+    const newCount = rows.filter(r=>r.status==='new').length;
+    const outCount = rows.filter(r=>r.status==='out').length;
+    const gainers = rows.filter(r=>r.status==='both' && r.delta>0).sort((x,y)=>y.delta-x.delta).slice(0,5);
+    const losers = rows.filter(r=>r.status==='both' && r.delta<0).sort((x,y)=>x.delta-y.delta).slice(0,5);
+
+    document.getElementById('summary').innerHTML = `
+      <div class="card"><div class="num">${brands.length}</div><div class="lbl">비교 대상 브랜드 수</div></div>
+      <div class="card clickable${cmpStatusFilter==='new'?' active':''}" id="cardNew" style="color:var(--new)" title="클릭하면 신규진입 브랜드만 표에 표시됩니다"><div class="num" style="color:var(--new)">${newCount}</div><div class="lbl">B기간 신규진입</div></div>
+      <div class="card clickable${cmpStatusFilter==='out'?' active':''}" id="cardOut" style="color:#6b7280" title="클릭하면 이탈 브랜드만 표에 표시됩니다"><div class="num" style="color:#9ca3af">${outCount}</div><div class="lbl">B기간 이탈</div></div>
+      <div class="card"><div class="num" style="color:var(--up)">${gainers.length?('+'+fmtAvg(gainers[0].delta)):'-'}</div><div class="lbl">최대 상승폭 (${gainers[0]?gainers[0].brand:'-'})</div></div>
+    `;
+    document.getElementById('lists').innerHTML = `
+      <div class="card list-card"><h3>▲ 순위 상승 TOP5</h3>${gainers.map(g=>`<div class="list-row"><span>${g.brand}</span><span class="chip up">${fmtAvg(g.a)}→${fmtAvg(g.b)} (▲${fmtAvg(g.delta)})</span></div>`).join('') || '<div class="list-row"><span>없음</span></div>'}</div>
+      <div class="card list-card"><h3>▼ 순위 하락 TOP5</h3>${losers.map(g=>`<div class="list-row"><span>${g.brand}</span><span class="chip down">${fmtAvg(g.a)}→${fmtAvg(g.b)} (▼${fmtAvg(-g.delta)})</span></div>`).join('') || '<div class="list-row"><span>없음</span></div>'}</div>
+    `;
+    document.getElementById('cardNew').onclick = () => { cmpStatusFilter = cmpStatusFilter==='new' ? null : 'new'; draw(); };
+    document.getElementById('cardOut').onclick = () => { cmpStatusFilter = cmpStatusFilter==='out' ? null : 'out'; draw(); };
+
+    document.getElementById('filterChipWrap').innerHTML = cmpStatusFilter
+      ? `<span class="filter-chip" id="clearFilterChip">필터: ${cmpStatusFilter==='new'?'신규진입':'이탈'} 브랜드만 표시 (${cmpStatusFilter==='new'?newCount:outCount}개) ✕ 클릭해서 해제</span>`
+      : '';
+    if(cmpStatusFilter){
+      document.getElementById('clearFilterChip').onclick = () => { cmpStatusFilter = null; draw(); };
+    }
+
+    const visibleRows = cmpStatusFilter ? rows.filter(r => r.status === cmpStatusFilter) : rows;
+
+    document.getElementById('cmpBody').innerHTML = visibleRows.map(r => {
+      let statusHtml = '';
+      let deltaHtml = '<span class="dash">-</span>';
+      if(r.status==='new') statusHtml = '<span class="chip new">신규</span>';
+      else if(r.status==='out') statusHtml = '<span class="chip out">이탈</span>';
+      else {
+        if(r.delta>0) deltaHtml = `<span class="chip up">▲${fmtAvg(r.delta)}</span>`;
+        else if(r.delta<0) deltaHtml = `<span class="chip down">▼${fmtAvg(-r.delta)}</span>`;
+        else deltaHtml = '<span class="chip same">–</span>';
+      }
+      return `<tr>
+        <td class="brand">${r.brand}</td>
+        <td>${r.a != null ? fmtAvg(r.a) : '<span class="dash">-</span>'}</td>
+        <td>${r.b != null ? fmtAvg(r.b) : '<span class="dash">-</span>'}</td>
+        <td>${deltaHtml}</td>
+        <td>${statusHtml}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="5" style="padding:24px;color:#9ca3af;">해당하는 브랜드가 없습니다.</td></tr>';
+  }
+
+  selA.onchange = draw;
+  selB.onchange = draw;
+  document.querySelectorAll('th.sortable').forEach(th => {
+    th.onclick = () => {
+      const k = th.dataset.k;
+      if(cmpSortKey === k) cmpSortDir *= -1; else { cmpSortKey = k; cmpSortDir = 1; }
+      draw();
+    };
+  });
+  draw();
+}
+
+showPeriod(PERIODS.length - 1);
+</script>
+</body>
+</html>
