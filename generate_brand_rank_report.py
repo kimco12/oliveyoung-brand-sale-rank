@@ -48,8 +48,7 @@ WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"]
 GITHUB_API = "https://api.github.com"
 BRANDRANK_CONFIG_FILE = BASE_DIR / "github_config_brandrank.json"
 LEGACY_CONFIG_FILE = BASE_DIR / "github_config.json"  # 올리브영 랭킹 대시보드용(토큰 재사용)
-DEFAULT_REPO = "oliveyoung-brand-sale-rank"        # private: 소스코드 + index.html 백업
-DEFAULT_PAGES_REPO = "oliveyoung-brand-sale-rank-pages"  # public: index.html만(Pages 배포용)
+DEFAULT_REPO = "oliveyoung-brand-sale-rank"
 BRANCH = "main"
 PATH_IN_REPO = "index.html"
 
@@ -179,9 +178,8 @@ def load_deploy_config():
             log.error("github_config.json 읽기 실패: %s", e)
 
     repo = repo or str(cfg.get("repo", "")).strip() or DEFAULT_REPO
-    pages_repo = os.getenv("GITHUB_PAGES_REPO", "").strip() or str(cfg.get("pages_repo", "")).strip() or DEFAULT_PAGES_REPO
     owner = owner or str(cfg.get("owner", "")).strip()
-    return token, repo, pages_repo, owner, cfg
+    return token, repo, owner, cfg
 
 
 def save_deploy_config(cfg, **updates):
@@ -279,7 +277,7 @@ def ensure_pages(token, owner, repo):
 
 
 def deploy_to_github_pages(html_text):
-    token, repo, pages_repo, owner, cfg = load_deploy_config()
+    token, repo, owner, cfg = load_deploy_config()
     if not token:
         log.warning("GitHub 토큰 없음 → 배포 건너뜀. github_config_brandrank.json 의 token 을 채우세요.")
         return "skip"
@@ -290,29 +288,20 @@ def deploy_to_github_pages(html_text):
             log.error("GitHub 사용자 조회 실패 status=%s: %s", u.status_code, u.text[:200])
             return False
         owner = u.json().get("login", "")
-        save_deploy_config(cfg, token=token, repo=repo, pages_repo=pages_repo, owner=owner)
+        save_deploy_config(cfg, token=token, repo=repo, owner=owner)
         log.info("GitHub 사용자: %s", owner)
 
-    # 1) 소스코드 백업 저장소(private) — index.html + 스크립트/템플릿/README
-    if not ensure_repo(token, owner, repo, private=True):
+    if not ensure_repo(token, owner, repo, private=False):
         return False
     if not put_file(token, owner, repo, html_text):
         return False
-    log.info("index.html 커밋 완료 (%s/%s, private)", owner, repo)
+    log.info("index.html 커밋 완료 (%s/%s)", owner, repo)
     push_source_files(token, owner, repo)
 
-    # 2) 출력 전용 저장소(public) — index.html만, Pages로 실제 서비스
-    if not ensure_repo(token, owner, pages_repo, private=False,
-                        description="올리브영 브세 순위 리포트 (출력 전용, 소스코드는 비공개 저장소에 있음)"):
-        return False
-    if not put_file(token, owner, pages_repo, html_text):
-        return False
-    log.info("index.html 커밋 완료 (%s/%s, public)", owner, pages_repo)
-
-    url = ensure_pages(token, owner, pages_repo)
-    pages_url = url or f"https://{owner}.github.io/{pages_repo}/"
+    url = ensure_pages(token, owner, repo)
+    pages_url = url or f"https://{owner}.github.io/{repo}/"
     log.info("배포 완료 → %s (반영까지 최대 1~2분)", pages_url)
-    save_deploy_config(cfg, token=token, repo=repo, pages_repo=pages_repo, owner=owner, pages_url=pages_url)
+    save_deploy_config(cfg, token=token, repo=repo, owner=owner, pages_url=pages_url)
     return True
 
 
