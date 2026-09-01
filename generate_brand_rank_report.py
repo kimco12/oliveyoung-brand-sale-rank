@@ -236,28 +236,29 @@ def put_file(token, owner, repo, content_text, path=PATH_IN_REPO, commit_message
     return False
 
 
-# 저장소에는 완성된 리포트(index.html)와 이 두 소스 파일만 올린다.
+# 저장소에는 완성된 리포트(index.html)와 아래 소스 파일들만 올린다.
 # 엑셀 원본, github_config*.json(토큰 포함) 등은 절대 포함하지 않는다.
 SOURCE_FILES_TO_PUBLISH = [
-    "generate_brand_rank_report.py",
-    "_brand_rank_report_template.html",
+    (BASE_DIR / "generate_brand_rank_report.py", "generate_brand_rank_report.py"),
+    (BASE_DIR / "_brand_rank_report_template.html", "_brand_rank_report_template.html"),
+    (BASE_DIR / "메크로" / "oliveyoung_brand rank wide.py", "oliveyoung_brand rank wide.py"),
+    (BASE_DIR / "BRAND_RANK_README.md", "README.md"),
 ]
 
 
 def push_source_files(token, owner, repo):
-    for filename in SOURCE_FILES_TO_PUBLISH:
-        local_path = BASE_DIR / filename
+    for local_path, repo_path in SOURCE_FILES_TO_PUBLISH:
         if not local_path.exists():
-            log.warning("소스 파일 없음, 건너뜀: %s", filename)
+            log.warning("소스 파일 없음, 건너뜀: %s", local_path)
             continue
         ok = put_file(
             token, owner, repo,
             local_path.read_text(encoding="utf-8"),
-            path=filename,
-            commit_message=f"update {filename} {time.strftime('%Y-%m-%d %H:%M')}",
+            path=repo_path,
+            commit_message=f"update {repo_path} {time.strftime('%Y-%m-%d %H:%M')}",
         )
         if ok:
-            log.info("소스 커밋 완료: %s", filename)
+            log.info("소스 커밋 완료: %s", repo_path)
 
 
 def ensure_pages(token, owner, repo):
