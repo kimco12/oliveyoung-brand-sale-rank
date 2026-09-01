@@ -3,14 +3,10 @@
 올리브영 올영세일(3월/6월/9월/12월) 기간 동안의 TOP100 브랜드 순위를 엑셀에서 읽어와
 탭으로 탐색 가능한 HTML 리포트로 만들고, GitHub Pages에 자동 배포하는 개인용 리포팅 도구입니다.
 
-**라이브 리포트:** https://kimco12.github.io/oliveyoung-brand-sale-rank-pages/
+**라이브 리포트:** https://kimco12.github.io/oliveyoung-brand-sale-rank/
 
-> 이 저장소(oliveyoung-brand-sale-rank)는 비공개(private)이며 소스코드/엑셀 로직 백업용입니다.
-> 실제 리포트는 index.html만 담긴 별도의 공개 저장소 `oliveyoung-brand-sale-rank-pages`로
-> 배포되어 위 링크로만 결과물을 볼 수 있고, 소스코드는 노출되지 않습니다.
->
-> 여기 담긴 순위 데이터는 AI 스크립트가 엑셀을 그대로 파싱해 자동 생성한 결과이니,
-> 실제 의사결정에 쓰기 전에는 원본 엑셀과 대조해 검토하세요.
+> 이 저장소는 개인 메모/백업용입니다. 여기 담긴 순위 데이터는 AI 스크립트가 엑셀을 그대로
+> 파싱해 자동 생성한 결과이니, 실제 의사결정에 쓰기 전에는 원본 엑셀과 대조해 검토하세요.
 
 ## 파일 구성
 
