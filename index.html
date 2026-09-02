@@ -334,6 +334,7 @@ function showCompare(){
       <select id="selA"></select>
       <label style="font-size:13px;color:var(--muted);">비교 B</label>
       <select id="selB"></select>
+      <input type="text" id="cmpSearchBox" placeholder="브랜드명 검색..." />
     </div>
     <div class="summary" id="summary"></div>
     <div class="lists" id="lists"></div>
@@ -362,6 +363,7 @@ function showCompare(){
   });
 
   let cmpStatusFilter = null; // null | 'new' | 'out'
+  let cmpSearch = '';
 
   function avgRankMap(p){
     const m = {};
@@ -427,7 +429,12 @@ function showCompare(){
       document.getElementById('clearFilterChip').onclick = () => { cmpStatusFilter = null; draw(); };
     }
 
-    const visibleRows = cmpStatusFilter ? rows.filter(r => r.status === cmpStatusFilter) : rows;
+    const q = cmpSearch.trim().toLowerCase();
+    const visibleRows = rows.filter(r => {
+      if(cmpStatusFilter && r.status !== cmpStatusFilter) return false;
+      if(q && !r.brand.toLowerCase().includes(q)) return false;
+      return true;
+    });
 
     document.getElementById('cmpBody').innerHTML = visibleRows.map(r => {
       let statusHtml = '';
@@ -451,6 +458,7 @@ function showCompare(){
 
   selA.onchange = draw;
   selB.onchange = draw;
+  document.getElementById('cmpSearchBox').oninput = (e) => { cmpSearch = e.target.value; draw(); };
   document.querySelectorAll('th.sortable').forEach(th => {
     th.onclick = () => {
       const k = th.dataset.k;
